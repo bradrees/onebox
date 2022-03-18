@@ -2,16 +2,17 @@
 
 module Onebox
   module Engine
-    class SimplecastOnebox
+    class SoundCloudOnebox
       include Engine
       include StandardEmbed
 
-      matches_regexp(/https?:\/\/(.+)?simplecast.com\/(episodes|s)\/.*/)
+      matches_regexp(/^https?:\/\/soundcloud\.com/)
+      requires_iframe_origins "https://w.soundcloud.com"
       always_https
-      requires_iframe_origins("https://player.simplecast.com")
 
       def to_html
-        get_oembed.html
+        oembed = get_oembed
+        oembed.html.gsub('visual=true', 'visual=false')
       end
 
       def placeholder_html
@@ -20,10 +21,12 @@ module Onebox
         "<img src='#{oembed.thumbnail_url}' #{oembed.title_attr}>"
       end
 
-      private
+      protected
 
       def get_oembed_url
-        "https://api.simplecast.com/oembed?url=#{url}"
+        oembed_url = "https://soundcloud.com/oembed.json?url=#{url}"
+        oembed_url += "&maxheight=166" unless url["/sets/"]
+        oembed_url
       end
     end
   end

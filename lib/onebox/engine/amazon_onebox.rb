@@ -46,6 +46,37 @@ module Onebox
         end
       end
 
+      def to_html(ignore_errors = false)
+        unless ignore_errors
+          verified_data # forces a check for missing fields
+          return '' unless errors.empty?
+        end
+
+        super()
+      end
+
+      def placeholder_html
+        to_html(true)
+      end
+
+      def verified_data
+        @verified_data ||= begin
+          result = data
+
+          required_tags = [:title, :description]
+          required_tags.each do |tag|
+            if result[tag].blank?
+              errors[tag] ||= []
+              errors[tag] << 'is blank'
+            end
+          end
+
+          result
+        end
+
+        @verified_data
+      end
+
       private
 
       def has_cached_body
@@ -93,7 +124,12 @@ module Onebox
         elsif !raw.css("#priceblock_ourprice").inner_text.empty?
           raw.css("#priceblock_ourprice").inner_text
         else
-          raw.css(".mediaMatrixListItem.a-active .a-color-price").inner_text
+          result = raw.css('#corePrice_feature_div .a-price .a-offscreen').first&.inner_text
+          if result.blank?
+            result = raw.css(".mediaMatrixListItem.a-active .a-color-price").inner_text
+          end
+
+          result
         end
       end
 
@@ -184,8 +220,10 @@ module Onebox
 
           summary = raw.at("#productDescription")
 
-          description = og.description || summary&.inner_text
-          description ||= raw.css("meta[name=description]").first&.[]("content")
+          description = og.description || summary&.inner_text&.strip
+          if description.blank?
+            description = raw.css("meta[name=description]").first&.[]("content")
+          end
           result[:description] = CGI.unescapeHTML(Onebox::Helpers.truncate(description, 250)) if description
         end
 

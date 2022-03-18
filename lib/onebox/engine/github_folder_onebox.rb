@@ -7,13 +7,8 @@ module Onebox
       include StandardEmbed
       include LayoutSupport
 
-      matches_regexp(/^https?:\/\/(?:www\.)?(?:(?:\w)+\.)?(github)\.com[\:\d]*(\/[^\/]+){2}/)
+      matches_regexp(/^https?:\/\/(?:www\.)?(?:(?:\w)+\.)?(github)\.com[\:\d]*(\/[^\/]+){2}\/tree/)
       always_https
-
-      def self.priority
-        # This engine should have lower priority than the other Github engines
-        150
-      end
 
       private
 
@@ -31,14 +26,10 @@ module Onebox
         if fragment
           fragment = Addressable::URI.unencode(fragment)
 
-          if html_doc.css('.Box.md')
-            # For links to markdown docs
+          # For links to markdown and rdoc
+          if html_doc.css(".Box.md, .Box.rdoc").present?
             node = html_doc.css('a.anchor').find { |n| n['href'] == "##{fragment}" }
             subtitle = node&.parent&.text
-          elsif html_doc.css('.Box.rdoc')
-            # For links to rdoc docs
-            node = html_doc.css('h3').find { |n| n['id'] == "user-content-#{fragment.downcase}" }
-            subtitle = node&.css('text()')&.first&.text
           end
 
           title = "#{title} - #{subtitle}" if subtitle
@@ -46,7 +37,6 @@ module Onebox
 
         {
           link: url,
-          image: og.image,
           title: Onebox::Helpers.truncate(title, 250),
           path: display_path,
           description: display_description,

@@ -23,7 +23,7 @@ module Onebox
         html.css('meta').each do |m|
           if m.attribute('property') && m.attribute('property').to_s.match(/^og:/i)
             m_content = m.attribute('content').to_s.strip
-            m_property = m.attribute('property').to_s.gsub('og:', '')
+            m_property = m.attribute('property').to_s.gsub('og:', '').gsub(':', '_')
             twitter_data[m_property.to_sym] = m_content
           end
         end
@@ -82,9 +82,17 @@ module Onebox
 
       def title
         if twitter_api_credentials_present?
-          "#{access(:user, :name)} (#{access(:user, :screen_name)})"
+          access(:user, :name)
         else
-          "#{attr_at_css('.tweet.permalink-tweet', 'data-name')} (#{attr_at_css('.tweet.permalink-tweet', 'data-screen-name')})"
+          attr_at_css('.tweet.permalink-tweet', 'data-name')
+        end
+      end
+
+      def screen_name
+        if twitter_api_credentials_present?
+          access(:user, :screen_name)
+        else
+          attr_at_css('.tweet.permalink-tweet', 'data-screen-name')
         end
       end
 
@@ -92,7 +100,7 @@ module Onebox
         if twitter_api_credentials_present?
           access(:user, :profile_image_url_https).sub('normal', '400x400')
         elsif twitter_data[:image]
-          twitter_data[:image]
+          twitter_data[:image] unless twitter_data[:image_user_generated]
         end
       end
 
@@ -158,6 +166,7 @@ module Onebox
           tweet: tweet,
           timestamp: timestamp,
           title: title,
+          screen_name: screen_name,
           avatar: avatar,
           likes: likes,
           retweets: retweets,

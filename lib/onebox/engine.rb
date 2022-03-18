@@ -17,7 +17,8 @@ module Onebox
     end
 
     def self.origins_to_regexes(origins)
-      return /.*/ if origins.include?("*")
+      return [/.*/] if origins.include?("*")
+
       origins.map do |origin|
         escaped_origin = Regexp.escape(origin)
         if origin.start_with?("*.", "https://*.", "http://*.")
@@ -31,8 +32,6 @@ module Onebox
     attr_reader :url, :uri, :options, :timeout
     attr :errors
 
-    DEFAULT = {}
-
     def options=(opt)
       return @options if opt.nil? # make sure options provided
       opt = opt.to_h if opt.instance_of?(OpenStruct)
@@ -42,7 +41,7 @@ module Onebox
 
     def initialize(url, timeout = nil)
       @errors = {}
-      @options = DEFAULT
+      @options = {}
       class_name = self.class.name.split("::").last.to_s
 
       # Set the engine options extracted from global options.
@@ -98,6 +97,12 @@ module Onebox
     end
 
     module ClassMethods
+      def handles_content_type?(other)
+        if other && class_variable_defined?(:@@matcher_content_type)
+          !!(other.to_s =~ class_variable_get(:@@matcher_content_type))
+        end
+      end
+
       def ===(other)
         if other.kind_of?(URI)
           !!(other.to_s =~ class_variable_get(:@@matcher))
@@ -112,6 +117,10 @@ module Onebox
 
       def matches_regexp(r)
         class_variable_set :@@matcher, r
+      end
+
+      def matches_content_type(ct)
+        class_variable_set :@@matcher_content_type, ct
       end
 
       def requires_iframe_origins(*origins)
@@ -150,7 +159,7 @@ require_relative "engine/github_blob_onebox"
 require_relative "engine/github_commit_onebox"
 require_relative "engine/github_folder_onebox"
 require_relative "engine/github_gist_onebox"
-require_relative "engine/github_pullrequest_onebox"
+require_relative "engine/github_pull_request_onebox"
 require_relative "engine/google_calendar_onebox"
 require_relative "engine/google_docs_onebox"
 require_relative "engine/google_maps_onebox"
@@ -166,22 +175,22 @@ require_relative "engine/youtube_onebox"
 require_relative "engine/youku_onebox"
 require_relative "engine/allowlisted_generic_onebox"
 require_relative "engine/pubmed_onebox"
-require_relative "engine/soundcloud_onebox"
+require_relative "engine/sound_cloud_onebox"
 require_relative "engine/imgur_onebox"
 require_relative "engine/pastebin_onebox"
 require_relative "engine/slides_onebox"
 require_relative "engine/xkcd_onebox"
-require_relative "engine/giphy_onebox"
+require_relative "engine/animated_image_onebox"
 require_relative "engine/gfycat_onebox"
 require_relative "engine/typeform_onebox"
 require_relative "engine/vimeo_onebox"
 require_relative "engine/steam_store_onebox"
-require_relative "engine/sketchfab_onebox"
+require_relative "engine/sketch_fab_onebox"
 require_relative "engine/audioboom_onebox"
 require_relative "engine/replit_onebox"
 require_relative "engine/asciinema_onebox"
 require_relative "engine/mixcloud_onebox"
-require_relative "engine/bandcamp_onebox"
+require_relative "engine/band_camp_onebox"
 require_relative "engine/coub_onebox"
 require_relative "engine/flickr_onebox"
 require_relative "engine/flickr_shortened_onebox"
@@ -191,7 +200,7 @@ require_relative "engine/twitch_clips_onebox"
 require_relative "engine/twitch_stream_onebox"
 require_relative "engine/twitch_video_onebox"
 require_relative "engine/trello_onebox"
-require_relative "engine/cloudapp_onebox"
+require_relative "engine/cloud_app_onebox"
 require_relative "engine/wistia_onebox"
 require_relative "engine/simplecast_onebox"
 require_relative "engine/instagram_onebox"
@@ -201,3 +210,4 @@ require_relative "engine/kaltura_onebox"
 require_relative "engine/reddit_media_onebox"
 require_relative "engine/google_drive_onebox"
 require_relative "engine/facebook_media_onebox"
+require_relative "engine/hackernews_onebox"

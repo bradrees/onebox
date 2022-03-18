@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'htmlentities'
+require "ipaddr"
 
 module Onebox
   module Engine
@@ -11,125 +12,6 @@ module Onebox
 
       def self.priority
         200
-      end
-
-      def self.allowed_domains=(list)
-        @allowed_domains = list
-      end
-
-      def self.allowed_domains
-        @allowed_domains ||= default_allowed_domains.dup
-      end
-
-      def self.default_allowed_domains
-        %w(
-          23hq.com
-          500px.com
-          8tracks.com
-          abc.net.au
-          answers.com
-          arstechnica.com
-          ask.com
-          battle.net
-          bbc.co.uk
-          bbs.boingboing.net
-          bestbuy.ca
-          bestbuy.com
-          bloomberg.com
-          businessinsider.com
-          change.org
-          cnet.com
-          cnn.com
-          codepen.io
-          collegehumor.com
-          consider.it
-          coursera.org
-          cracked.com
-          dailymail.co.uk
-          dailymotion.com
-          deadline.com
-          dell.com
-          deviantart.com
-          digg.com
-          dotsub.com
-          ebay.ca
-          ebay.co.uk
-          ebay.com
-          ehow.com
-          espn.go.com
-          etsy.com
-          facebook.com
-          findery.com
-          folksy.com
-          forbes.com
-          foxnews.com
-          funnyordie.com
-          gifs.com
-          groupon.com
-          howtogeek.com
-          huffingtonpost.ca
-          huffingtonpost.com
-          hulu.com
-          ign.com
-          ikea.com
-          imdb.com
-          indiatimes.com
-          itunes.apple.com
-          khanacademy.org
-          kickstarter.com
-          kinomap.com
-          lessonplanet.com
-          linkedin.com
-          liveleak.com
-          livestream.com
-          mashable.com
-          medium.com
-          meetup.com
-          mixcloud.com
-          mlb.com
-          myspace.com
-          nba.com
-          npr.org
-          nytimes.com
-          photobucket.com
-          pinterest.com
-          reference.com
-          rottentomatoes.com
-          samsung.com
-          scribd.com
-          slideshare.net
-          sourceforge.net
-          speakerdeck.com
-          spotify.com
-          streamable.com
-          techcrunch.com
-          ted.com
-          thefreedictionary.com
-          theglobeandmail.com
-          thenextweb.com
-          theonion.com
-          thestar.com
-          thesun.co.uk
-          thinkgeek.com
-          tmz.com
-          torontosun.com
-          tumblr.com
-          twitpic.com
-          usatoday.com
-          viddler.com
-          vine.co
-          walmart.com
-          washingtonpost.com
-          wi.st
-          wikia.com
-          wikihow.com
-          wired.com
-          wistia.com
-          wonderhowto.com
-          wsj.com
-          zappos.com
-          zillow.com
-        )
       end
 
       # Often using the `html` attribute is not what we want, like for some blogs that
@@ -160,16 +42,12 @@ module Onebox
         %w(slideshare.net dailymotion.com livestream.com imgur.com flickr.com)
       end
 
+      def self.article_html_hosts
+        %w(imdb.com)
+      end
+
       def self.host_matches(uri, list)
         !!list.find { |h| %r((^|\.)#{Regexp.escape(h)}$).match(uri.host) }
-      end
-
-      def self.probable_discourse(uri)
-        !!(uri.path =~ /\/t\/[^\/]+\/\d+(\/\d+)?(\?.*)?$/)
-      end
-
-      def self.probable_wordpress(uri)
-        !!(uri.path =~ /\d{4}\/\d{2}\//)
       end
 
       def self.allowed_twitter_labels
@@ -177,9 +55,7 @@ module Onebox
       end
 
       def self.===(other)
-        other.kind_of?(URI) ?
-          host_matches(other, allowed_domains) || probable_wordpress(other) || probable_discourse(other) :
-          super
+        other.is_a?(URI) ? (IPAddr.new(other.hostname) rescue nil).nil? : true
       end
 
       def to_html
@@ -187,11 +63,15 @@ module Onebox
       end
 
       def placeholder_html
-        return article_html if is_article?
+        return article_html if (is_article? || force_article_html?)
         return image_html if is_image?
-        return Onebox::Helpers.video_placeholder_html if is_video? || is_card?
-        return Onebox::Helpers.generic_placeholder_html if is_embedded?
+        return Onebox::Helpers.video_placeholder_html if !SiteSetting.enable_diffhtml_preview? && (is_video? || is_card?)
+        return Onebox::Helpers.generic_placeholder_html if !SiteSetting.enable_diffhtml_preview? && is_embedded?
         to_html
+      end
+
+      def verified_data
+        data
       end
 
       def data
@@ -274,7 +154,7 @@ module Onebox
       end
 
       def generic_html
-        return article_html  if is_article?
+        return article_html  if (is_article? || force_article_html?)
         return video_html    if is_video?
         return image_html    if is_image?
         return embedded_html if is_embedded?
@@ -331,17 +211,21 @@ module Onebox
         options[:allowed_iframe_regexes]&.any? { |r| src =~ r }
       end
 
+      def force_article_html?
+        AllowlistedGenericOnebox.host_matches(uri, AllowlistedGenericOnebox.article_html_hosts) && (has_text? || is_image_article?)
+      end
+
       def card_html
         escaped_url = ::Onebox::Helpers.normalize_url_for_output(data[:player])
 
-        <<~RAW
+        <<~HTML
         <iframe src="#{escaped_url}"
                 width="#{data[:player_width] || "100%"}"
                 height="#{data[:player_height]}"
                 scrolling="no"
                 frameborder="0">
         </iframe>
-        RAW
+        HTML
       end
 
       def article_html
