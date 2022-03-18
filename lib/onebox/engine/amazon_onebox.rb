@@ -65,7 +65,7 @@ module Onebox
 
           required_tags = [:title, :description]
           required_tags.each do |tag|
-            if result[tag].blank?
+            if result[tag]&.empty?
               errors[tag] ||= []
               errors[tag] << 'is blank'
             end
@@ -125,7 +125,7 @@ module Onebox
           raw.css("#priceblock_ourprice").inner_text
         else
           result = raw.css('#corePrice_feature_div .a-price .a-offscreen').first&.inner_text
-          if result.blank?
+          if result&.blank?
             result = raw.css(".mediaMatrixListItem.a-active .a-color-price").inner_text
           end
 
@@ -221,13 +221,13 @@ module Onebox
           summary = raw.at("#productDescription")
 
           description = og.description || summary&.inner_text&.strip
-          if description.blank?
+          if description&.empty?
             description = raw.css("meta[name=description]").first&.[]("content")
           end
           result[:description] = CGI.unescapeHTML(Onebox::Helpers.truncate(description, 250)) if description
         end
 
-        result[:price] = nil if result[:price].start_with?("$0") || result[:price] == 0
+        result[:price] = nil if result[:price]&.start_with?("$0") || result[:price] == 0
 
         result
       end

@@ -27,7 +27,7 @@ module Onebox
           fragment = Addressable::URI.unencode(fragment)
 
           # For links to markdown and rdoc
-          if html_doc.css(".Box.md, .Box.rdoc").present?
+          unless html_doc.css(".Box.md, .Box.rdoc")&.empty?
             node = html_doc.css('a.anchor').find { |n| n['href'] == "##{fragment}" }
             subtitle = node&.parent&.text
           end
