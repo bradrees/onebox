@@ -27,23 +27,23 @@ module Onebox
     def self.fetch_html_doc(url, headers = nil, body_cacher = nil)
       response = (fetch_response(url, headers: headers, body_cacher: body_cacher) rescue nil)
       doc = Nokogiri::HTML(response)
-      uri = Addressable::URI.parse(url)
-
-      ignore_canonical_tag = doc.at('meta[property="og:ignore_canonical"]')
-      should_ignore_canonical = IGNORE_CANONICAL_DOMAINS.map { |hostname| uri.hostname.match?(hostname) }.any?
-
-      unless (ignore_canonical_tag && ignore_canonical_tag['content'].to_s == 'true') || should_ignore_canonical
-        # prefer canonical link
-        canonical_link = doc.at('//link[@rel="canonical"]/@href')
-        canonical_uri = Addressable::URI.parse(canonical_link)
-        if canonical_link && canonical_uri && "#{canonical_uri.host}#{canonical_uri.path}" != "#{uri.host}#{uri.path}"
-          uri = FinalDestination.new(canonical_link, Oneboxer.get_final_destination_options(canonical_link)).resolve
-          if uri.present?
-            response = (fetch_response(uri.to_s, headers: headers, body_cacher: body_cacher) rescue nil)
-            doc = Nokogiri::HTML(response) if response
-          end
-        end
-      end
+      # uri = Addressable::URI.parse(url)
+      #
+      # ignore_canonical_tag = doc.at('meta[property="og:ignore_canonical"]')
+      # should_ignore_canonical = IGNORE_CANONICAL_DOMAINS.map { |hostname| uri.hostname.match?(hostname) }.any?
+      #
+      # unless (ignore_canonical_tag && ignore_canonical_tag['content'].to_s == 'true') || should_ignore_canonical
+      #   # prefer canonical link
+      #   canonical_link = doc.at('//link[@rel="canonical"]/@href')
+      #   canonical_uri = Addressable::URI.parse(canonical_link)
+      #   if canonical_link && canonical_uri && "#{canonical_uri.host}#{canonical_uri.path}" != "#{uri.host}#{uri.path}"
+      #     uri = FinalDestination.new(canonical_link, Oneboxer.get_final_destination_options(canonical_link)).resolve
+      #     if uri.present?
+      #       response = (fetch_response(uri.to_s, headers: headers, body_cacher: body_cacher) rescue nil)
+      #       doc = Nokogiri::HTML(response) if response
+      #     end
+      #   end
+      # end
 
       doc
     end
